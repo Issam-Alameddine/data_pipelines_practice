@@ -1,6 +1,6 @@
-# Data Pipelines Practice with AWS
+# Creating a Trading Bot
 ## Objective:
-- Practicing implementing data pipelines from scratch on AWS from data extraction to ML modelling. Will use services such as Kinesis, Kinesis Firehose, S3, Glue, Iceberg, Redshift, Airflow and Superset.
+- Create a trading bot that detects anomalies from indicators before a price spike. Using polygon.io as data source.
 
 ## NOTES
 
