@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: S3 bucket with minimal config
+
+Resources:
+  HistoricDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: archived-stock-data  # Change to something globally unique
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+Outputs:
+  BucketName:
+    Description: Name of the created S3 bucket
+    Value: !Ref HistoricDataBucket
