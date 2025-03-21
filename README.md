@@ -1,25 +1,14 @@
 # Creating a Trading Bot
 ## Objective:
-- Create a trading bot that detects anomalies from indicators before a price spike. Using polygon.io as data source.
-
-## NOTES
-
-### Admin
-- aws iam list-attached-group-policies --group-name myGroupName
-
-### CloudFormation
-- Validate your template:  
-   <div align="center"> <pre>aws cloudformation validate-template --template-body file://my_template_file.yaml</pre></div>
-- Deploy template:  
-   <div align="center"><pre>aws cloudformation create-stack --stack-name myStackName --template-body file://my_template_file.yaml</pre></div>
-- Monitor progress:  
-   <div align="center"><pre>aws cloudformation describe-stacks --stack-name myStackName --query "Stacks[0].StackStatus</pre></div>
-- If stack deployment failed, check the error, delete and verify it's gone:
-   <div align="center"><pre>aws cloudformation describe-stack-events --stack-name myStackName --query "StackEvents[*].[ResourceStatus,ResourceStatusReason]"
-     aws cloudformation delete-stack --stack-name myStackName
-     aws cloudformation list-stacks --query "StackSummaries[?StackStatus=='DELETE_COMPLETE']"</pre>
-   </div>
- 
-### Kinesis
- - list streams: aws kinesis list-streams
-
+Create a trading bot that detects anomalies from indicators before a price spike.
+## Core Data Categories for Stock Market Analysis  
+| Category                            | Key Data Points to Collect                                                                 | Purpose                                                         |
+|-------------------------------------|---------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
+|  Price & Volume Data (Historical + Real-Time) | Open, High, Low, Close (OHLC), VWAP, Trading Volume, Number of Transactions                 | Detect price trends, volatility, and volume spikes.             |
+|  Options Market Data              | Strike Prices, Open Interest, Implied Volatility (IV), Call & Put Volume, Unusual Large Option Trades | Detect institutional positioning before stock moves.            |
+|  Dark Pool & Institutional Trading | Dark Pool Trade Volume, Price Impact, Large Block Trades, Unusual Buying Activity           | Identify hidden accumulation by hedge funds.                   |
+|  SEC Filings & Insider Trading   | Insider Buys/Sells, 13F Hedge Fund Positions, Corporate Filings (10-K, 10-Q, 8-K), Earnings Reports | Track executive & hedge fund confidence in stocks.             |
+|  Bid-Ask Spread & Liquidity Data | Real-Time Bid & Ask Prices, Spread Size, Order Book Depth                                   | Detect illiquid stocks or sudden liquidity shifts.              |
+|  Social Media Sentiment & News   | Reddit/WSB Mentions, Twitter Mentions, Market News Headlines, Sentiment Score               | Identify meme stocks before they explode.                      |
+|  Short Interest & Borrowing Data | Short Interest % of Float, Cost to Borrow, Utilization Rate, Days to Cover                  | Find potential short squeeze opportunities.                    |
+|  Macro Market Indicators         | VIX (Volatility Index), US Treasury Bond Yields, Federal Reserve Announcements              | Understand broad market conditions impacting stocks.           |
