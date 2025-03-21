@@ -1,0 +1,25 @@
+version: 1
+formatters:
+  default:
+    format: '%(asctime)s - %(name)-12s - %(levelname)-8ss - %(message)s',
+    datefmt: "%Y-%m-%d %H:%M:%S"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: default
+    stream: ext://sys.stdout
+
+  file:
+    class: logging.FileHandler
+    level: INFO
+    formatter: default
+    filename: logs.log
+    mode: a  # append to existing file
+
+loggers:
+  "":
+    level: INFO
+    handlers: [console, file]
+    propagate: no

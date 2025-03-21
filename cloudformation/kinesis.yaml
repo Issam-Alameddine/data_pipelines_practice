@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  KinesisDataStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: EventTriggeredStream
+      RetentionPeriodHours: 24
+      ShardCount: 2
+      StreamEncryption:
+        EncryptionType: KMS
+        KeyId: alias/aws/kinesis
+      StreamModeDetails:
+        StreamMode: PROVISIONED
+      Tags:
+        -
+          Key: my_first_kinesis_stream_tag_key
+          Value: my_first_kinesis_stream_tag_value
+
+Outputs:
+  KinesisStreamArn:
+    Description: "Arn of the Kinesis Data Stream (my_first_kinesis_stream)"
+    Value: !GetAtt KinesisDataStream.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-KinesisStreamArn"
+
+
