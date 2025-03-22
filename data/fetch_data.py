@@ -29,7 +29,7 @@ def fetch_ticker_details(ticker):
     :return:
     """
     return client.get_ticker_details(ticker = ticker)
-def fetch_aggs(ticker, start_date, end_date, candle_size=5, time_period='minute', limit=50000):
+def fetch_aggs(ticker, start_date, end_date, candle_size, time_period, limit=50000):
     """
     Fetch historical OHLCV data from Polygon.
 

@@ -20,8 +20,8 @@ def main():
     args = parser.parse_args()
 
     if args.task == "setup":
-        if not args.start_date or not args.end_date:
-            parser.error("setup requires --start-date and --end-date")
+        if not args.start_date or not args.end_date or not args.candle_size or not args.time_period:
+            parser.error("setup requires --start-date  --end-date --candle-size and --time-period")
         from data.setup_data import run_setup
         logger.info(f"Running setup from {args.start_date} to {args.end_date}...")
         run_setup(start_date=args.start_date, end_date=args.end_date, candle_size=args.candle_size, time_period=args.time_period)
