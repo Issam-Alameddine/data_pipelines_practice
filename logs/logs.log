@@ -1891,3 +1891,22 @@
 2025-03-23 01:00:52 - utils.s3_helpers - INFO    s - Saved to s3://archived-stock-data/historical_ohlcv/ticker=TSLA/year=2025/month=03/day=21
 2025-03-23 01:00:52 - data.fetch   - INFO    s - Saved Historic OHLCV for TSLA on 2025-03-21 00:00:00...
 2025-03-23 09:13:56 - botocore.credentials - INFO    s - Found credentials in shared credentials file: ~/.aws/credentials
+2025-03-23 10:50:33 - botocore.credentials - INFO    s - Found credentials in shared credentials file: ~/.aws/credentials
+2025-03-23 10:52:26 - botocore.credentials - INFO    s - Found credentials in shared credentials file: ~/.aws/credentials
+2025-03-23 10:52:36 - data.fetch_stocks - INFO    s - Error processing ACHL: {"status":"NOT_FOUND","request_id":"932f44f6b4e42c5b0e58a3cb412edc05","message":"Ticker not found."}
+2025-03-23 10:55:11 - data.fetch_stocks - INFO    s - Error processing CCLDP: {"status":"NOT_FOUND","request_id":"7de9339366b158ee99873125f54300a8","message":"Ticker not found."}
+2025-03-23 11:02:53 - botocore.credentials - INFO    s - Found credentials in shared credentials file: ~/.aws/credentials
+2025-03-23 11:03:02 - data.fetch_stocks - INFO    s - Error processing ACHL: {"status":"NOT_FOUND","request_id":"100ad08d818f7d42944d1164cb593bd4","message":"Ticker not found."}
+2025-03-23 11:05:18 - data.fetch_stocks - INFO    s - Error processing CCLDP: {"status":"NOT_FOUND","request_id":"c9718b5db7baa40cb553f151fd747bbd","message":"Ticker not found."}
+2025-03-23 11:18:53 - data.fetch_stocks - INFO    s - Found 377 runner events.
+2025-03-23 11:21:45 - botocore.credentials - INFO    s - Found credentials in shared credentials file: ~/.aws/credentials
+2025-03-23 11:21:53 - data.fetch_stocks - INFO    s - Error processing ACHL: {"status":"NOT_FOUND","request_id":"d16b0f192e4ae3edb8e5f9aadc025e42","message":"Ticker not found."}
+2025-03-23 11:24:18 - data.fetch_stocks - INFO    s - Error processing CCLDP: {"status":"NOT_FOUND","request_id":"751a72202a0d6c968614cde00899c245","message":"Ticker not found."}
+2025-03-23 11:37:12 - data.fetch_stocks - INFO    s - Found 470 runner events.
+2025-03-23 12:03:32 - botocore.credentials - INFO    s - Found credentials in shared credentials file: ~/.aws/credentials
+2025-03-23 12:34:09 - botocore.credentials - INFO    s - Found credentials in shared credentials file: ~/.aws/credentials
+2025-03-23 12:36:06 - botocore.credentials - INFO    s - Found credentials in shared credentials file: ~/.aws/credentials
+2025-03-23 12:37:59 - utils.s3_helpers - INFO    s - Saved to s3://archived-stock-data/tickers_metadata.parquet
+2025-03-23 12:37:59 - data.fetch_stocks - INFO    s - Saved details to archived-stock-data/tickers_metadata.parquet
+2025-03-23 12:50:53 - botocore.credentials - INFO    s - Found credentials in shared credentials file: ~/.aws/credentials
+2025-03-23 13:16:38 - data.fetch_stocks - INFO    s - Found 486 runner events.

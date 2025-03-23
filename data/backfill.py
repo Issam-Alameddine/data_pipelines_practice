@@ -8,7 +8,7 @@ import pandas as pd
 import os
 
 from utils.config import *
-from data.fetch import fetch_ohlcv
+from data.fetch_stocks import fetch_ohlcv
 
 logger = logging.getLogger(__name__)
 

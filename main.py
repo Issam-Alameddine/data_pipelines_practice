@@ -1,14 +1,14 @@
 
 import logging.config
 import yaml
-
+from data.fetch_options import tag_runners_with_options
 with open("logs/logging.yaml", "r") as f:
     log_config = yaml.safe_load(f)
     logging.config.dictConfig(log_config)
 
 logger = logging.getLogger(__name__)
 
-from data.fetch import *
+from data.fetch_stocks import *
 from data.backfill import missing_dates_check
 
 if __name__ == "__main__":
@@ -24,4 +24,5 @@ if __name__ == "__main__":
     # for backfilling:
     # missing_dates_check(True)
 
-    fetch_candidate_tickers()
+    find_historical_runners()
+    # tag_runners_with_options()
