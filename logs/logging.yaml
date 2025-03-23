@@ -15,7 +15,7 @@ handlers:
     class: logging.FileHandler
     level: INFO
     formatter: default
-    filename: logs.log
+    filename: logs/logs.log
     mode: a  # append to existing file
 
 loggers:

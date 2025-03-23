@@ -1,65 +1,113 @@
-import pandas as pd
 import boto3
-import logging
+import pandas_market_calendars as mcal
+import re
 from datetime import datetime, timedelta
-from config import S3_BUCKET, OHLCV_FOLDER
-from data.fetch_data import fetch_ticker_data, fetch_aggs
-from utils.s3_helpers import save_df_to_s3_parquet
-from io import BytesIO
+from collections import defaultdict
+import logging
+import pandas as pd
+import os
+
+from utils.config import *
+from data.fetch import fetch_ohlcv
 
 logger = logging.getLogger(__name__)
-s3 = boto3.client("s3")
 
-def list_existing_keys(ticker: str, prefix: str):
-    result = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix=f"{prefix}{ticker}/")
-    keys = {obj["Key"]: obj["Size"] for obj in result.get("Contents", [])}
-    return keys
+def missing_dates_check(auto_backfill: bool = False):
+    bucket_name = f'{S3_BUCKET}'
+    prefix = f'{OHLCV_FOLDER}/'
 
-def run_backfill(start_date: str, end_date: str):
-    tickers_data = fetch_ticker_data()
-    tickers_df = pd.DataFrame(tickers_data)
-    start = datetime.strptime(start_date, "%Y-%m-%d")
-    end = datetime.strptime(end_date, "%Y-%m-%d")
+    # --- NYSE trading calendar ---
+    nyse = mcal.get_calendar('NYSE')
+    schedule = nyse.schedule(start_date='2025-01-01', end_date=datetime.today().strftime('%Y-%m-%d'))
+    valid_trading_days = set(schedule.index.date)
+    latest_trading_day = max(d for d in valid_trading_days if d < datetime.today().date())
 
-    hours = []
-    while start <= end:
-        for h in range(24):
-            hours.append(start.replace(hour=h).strftime("%Y-%m-%d-%H"))
-        start += timedelta(days=1)
+    # --- Load previous backfill report (if exists) ---
+    previous_checked = {}
+    previous_missing = defaultdict(set)
 
-    for ticker in tickers_df["ticker"]:
-        logger.info(f"Checking hourly gaps for {ticker}")
-        existing_keys = list_existing_keys(ticker, OHLCV_FOLDER)
-        missing_hours = []
+    if os.path.exists("logs/backfill_report.csv"):
+        old_df = pd.read_csv("logs/backfill_report.csv")
+        for _, row in old_df.iterrows():
+            ticker = row['ticker']
+            try:
+                last_checked = datetime.strptime(str(row['last_checked']), "%Y-%m-%d").date()
+                previous_checked[ticker] = last_checked
+            except Exception as e:
+                logger.warning(f"Couldn't parse last_checked for {ticker}: {e}")
+            try:
+                if pd.notna(row['missing_dates']):
+                    for d in str(row['missing_dates']).split(','):
+                        previous_missing[ticker].add(datetime.strptime(d.strip(), "%Y-%m-%d").date())
+            except Exception as e:
+                logger.warning(f"Couldn't parse missing_dates for {ticker}: {e}")
 
-        for hour in hours:
-            key = f"{OHLCV_FOLDER}{ticker}/{hour}.parquet"
-            if key not in existing_keys:
-                missing_hours.append(hour)
-            elif existing_keys[key] < 1024:  # Heuristic: < 1 KB probably means incomplete
-                logger.warning(f"⚠Incomplete file detected for {ticker} {hour}, will replace.")
-                missing_hours.append(hour)
+    # --- Scan S3 for partitioned dates ---
+    s3 = boto3.client('s3')
+    pattern = re.compile(r'ticker=(?P<ticker>[^/]+)/year=(?P<year>\d{4})/month=(?P<month>\d{2})/day=(?P<day>\d{2})')
+    partitions = defaultdict(set)
 
-        if not missing_hours:
-            logger.info(f"All data present for {ticker}")
+    paginator = s3.get_paginator('list_objects_v2')
+    for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+        for obj in page.get('Contents', []):
+            key = obj['Key']
+            match = pattern.search(key)
+            if match:
+                ticker = match.group('ticker')
+                date_str = f"{match.group('year')}-{match.group('month')}-{match.group('day')}"
+                partitions[ticker].add(date_str)
+
+    results = []
+    tickers_to_backfill = []
+
+    for ticker, date_strs in partitions.items():
+        date_objs = sorted(datetime.strptime(d, "%Y-%m-%d").date() for d in date_strs)
+        if not date_objs:
             continue
 
-        for hour in missing_hours:
-            ts = datetime.strptime(hour, "%Y-%m-%d-%H")
-            ts_start = ts.strftime("%Y-%m-%dT%H:00:00")
-            ts_end = (ts + timedelta(hours=1)).strftime("%Y-%m-%dT%H:00:00")
+        data_min_date = date_objs[0]
 
-            try:
-                aggs = fetch_aggs(ticker, ts_start, ts_end, 5, "minute")
-                df = pd.DataFrame([vars(a) for a in aggs])
-                if not df.empty:
-                    df["timestamp"] = pd.to_datetime(df["t"], unit="ms")
-                    df = df.rename(columns={
-                        "o": "open", "h": "high", "l": "low", "c": "close",
-                        "v": "volume", "vw": "vwap", "n": "transactions"
-                    })
-                    df = df[["timestamp", "open", "high", "low", "close", "volume", "vwap", "transactions"]]
-                    key = f"{OHLCV_FOLDER}{ticker}/{hour}.parquet"
-                    save_df_to_s3_parquet(df, S3_BUCKET, key)
-            except Exception as e:
-                logger.warning(f"Failed to backfill {ticker} {hour}: {e}")
+        previously_missing = previous_missing.get(ticker, set())
+
+        last_checked = previous_checked.get(ticker)
+
+        if last_checked:
+            post_checked_days = [d for d in valid_trading_days if d > last_checked and d <= latest_trading_day]
+            logger.info(f"Checking {ticker} from last_checked={last_checked} and {len(previously_missing)} previously missing days")
+        else:
+            post_checked_days = [d for d in valid_trading_days if d >= data_min_date and d <= latest_trading_day]
+            logger.info(f"Checking {ticker} from beginning ({data_min_date})")
+
+        expected_days = sorted(set(post_checked_days).union(previously_missing))
+        actual_days = set(date_objs)
+        missing_days = sorted(d for d in expected_days if d not in actual_days)
+
+        results.append({
+            'ticker': ticker,
+            'last_checked': latest_trading_day.strftime("%Y-%m-%d"),
+            'missing_count': len(missing_days),
+            'missing_dates': ', '.join(d.strftime("%Y-%m-%d") for d in missing_days) if missing_days else ''
+        })
+
+        if auto_backfill and missing_days:
+            for missing_date in missing_days:
+                tickers_to_backfill.append((ticker, missing_date))
+
+    # --- Save updated backfill report ---
+    df = pd.DataFrame(results)
+    df = df.sort_values(by='missing_count', ascending=False)
+    df.to_csv("logs/backfill_report.csv", index=False)
+    logger.info("Saved updated backfill_report.csv")
+
+    # --- Backfill missing days one-by-one ---
+    if auto_backfill:
+        for ticker, missing_date in tickers_to_backfill:
+            logger.info(f"Backfilling {ticker} on {missing_date}")
+            fetch_ohlcv(
+                start_date=missing_date.strftime("%Y-%m-%d"),
+                end_date=missing_date.strftime("%Y-%m-%d"),
+                tickers=[ticker],
+                candle_size=1,
+                time_period='minute'
+            )
+
