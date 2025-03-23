@@ -23,4 +23,5 @@ if __name__ == "__main__":
     # ----------------------------------------#
     # for backfilling:
     # missing_dates_check(True)
-    pass
+
+    fetch_candidate_tickers()

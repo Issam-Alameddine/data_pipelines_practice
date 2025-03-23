@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from polygon import RESTClient
-from tqdm import tqdm
+import pandas_market_calendars as mcal
 from utils.config import *
 from utils.s3_helpers import object_exists, save_df_to_s3_parquet
 import os
@@ -63,32 +63,51 @@ def fetch_ticker_details(tickers):
     # -------- #
 
 
-def fetch_candidate_tickers(window):
-    """
-    :param window: window size, in days, used to calculate the volume average
-    Fetches top 10 best average volume for tickers between $1 and $2")
-    :return: A list of tickers
-    """
-    tickers_list = pd.read_parquet(f"s3://{S3_BUCKET}/{DETAILS_PARQUET_KEY}")['ticker'].tolist()
-    ticker_avg_volume = []
-    for ticker in tickers_list:
-        volume, price, i = 0, 0, 0
-        moving_date = datetime.today().date() + timedelta(days=-window)
-        while moving_date < datetime.today().date():
-            try:
-                r = client.get_daily_open_close_agg(ticker=ticker, date=moving_date, adjusted=True)
-                volume += vars(r)['volume']
-                price += vars(r)['close']
-                i += 1
-                moving_date += timedelta(days=1)
-            except:
-                moving_date += timedelta(days=1)
+from datetime import datetime, timedelta
+import pandas as pd
+from tqdm import tqdm
 
-        if i >= 20 and 1 <= price/i <= 2:
-            ticker_avg_volume.append((ticker, round(volume / i), price/i))
-            print(ticker, round(volume / i), price/i)
-    best_tickers = sorted(ticker_avg_volume, key=lambda x: x[1], reverse=True)[:10]
-    pd.DataFrame(best_tickers, columns=['ticker', 'avg_volume', 'avg_price']).to_csv('data/best_tickers.csv', index=False)
+def fetch_candidate_tickers(window=20):
+    """
+    Fetches top 20 tickers by average notional volume over the last 'window' NYSE trading days.
+    Notional volume = price * volume.
+    Skips tickers with any day < 1M volume.
+    """
+    # Get last N trading days (excluding today)
+    nyse = mcal.get_calendar("NYSE")
+    schedule = nyse.schedule(start_date="2020-01-01", end_date=datetime.today().strftime('%Y-%m-%d'))
+    trading_days = sorted([d.date() for d in schedule.index if d.date() < datetime.today().date()])
+    last_days = trading_days[-window:]
+
+    tickers_list = pd.read_parquet(f"s3://{S3_BUCKET}/{DETAILS_PARQUET_KEY}")['ticker'].tolist()
+    ticker_notional_volume = []
+
+    for ticker in tqdm(tickers_list, desc="Scanning tickers"):
+        notional = 0
+        bail = False
+
+        for day in last_days:
+            try:
+                r = client.get_daily_open_close_agg(ticker=ticker, date=day, adjusted=True)
+                if r.volume < 1_000_000:
+                    bail = True
+                    break
+                notional += r.volume * r.close
+            except:
+                continue
+
+        if bail:
+            continue
+
+        avg_notional = round(notional / window)
+        ticker_notional_volume.append((ticker, avg_notional))
+        print(f"{ticker}: avg notional ${avg_notional:,}")
+
+    best = sorted(ticker_notional_volume, key=lambda x: x[1], reverse=True)[:20]
+    df = pd.DataFrame(best, columns=['ticker', 'avg_notional_volume'])
+    df.to_csv("data/top_notional_tickers.csv", index=False)
+    return df['ticker'].tolist()
+
 
 
 def fetch_ohlcv(start_date, end_date, tickers=None, candle_size=1, time_period='minute'):
